@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
 import { isAxiosError } from "axios";
-import dynamic from 'next/dynamic';
-
+import dynamic from "next/dynamic";
 
 export default function App() {
   const [tab, setTab] = useState("setup");
@@ -26,49 +25,59 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [generationPassword, setGenerationPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-const [hasStarted, setHasStarted] = useState(false);
-const [currentStep, setCurrentStep] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const [recordings, setRecordings] = useState<string[]>([]);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
   const steps = [
-  {
-    type: "video",
-    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4",
-    caption: "안녕하세요 (annyeonghaseyo)",
-  },
-  {
-    type: "user-input",
-    script: "안녕하세요 (annyeonghaseyo)",
-  },
-  {
-    type: "video",
-    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/names-lhaSc3wWiRuccNBMlvr8Ob5LYmQQZq.mp4",
-    caption: "제 이름은 공유입니다. 이름이 뭐에요? (je ireumeun Gong-yu-imnida. ireumi mwo-eyo?)",
-  },
-  {
-    type: "user-input",
-    script: `제 이름은 ${userName}입니다. (je ireumeun ${userName}-imnida)`,
-  },
-  {
-    type: "video",
-    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/nice-IzWkVPHdc5kYvLmxP0VFmOeHLtktvq.mp4",
-    caption: "반갑습니다 (bangapseumnida)",
-  },
-  {
-    type: "user-input",
-    script: "반갑습니다 (bangapseumnida)",
-  },
-  {
-    type: "analysis",
-  },
-];
+    {
+      type: "video",
+      media:
+        "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4",
+      caption: "안녕하세요 (annyeonghaseyo)",
+    },
+    {
+      type: "user-input",
+      script: "안녕하세요 (annyeonghaseyo)",
+    },
+    {
+      type: "video",
+      media:
+        "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/names-lhaSc3wWiRuccNBMlvr8Ob5LYmQQZq.mp4",
+      caption:
+        "이름이 뭐에요? 제 이름은 공유입니다. (ireumi mwo-eyo? je ireumeun Gong-yu-imnida.)",
+    },
+    {
+      type: "user-input",
+      script: `제 이름은 ${userName}입니다. (je ireumeun ${userName}-imnida)`,
+    },
+    {
+      type: "video",
+      media:
+        "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/nice-IzWkVPHdc5kYvLmxP0VFmOeHLtktvq.mp4",
+      caption: "반갑습니다 (bangapseumnida)",
+    },
+    {
+      type: "user-input",
+      script: "반갑습니다 (bangapseumnida)",
+    },
+    {
+      type: "analysis",
+    },
+  ];
 
   const step = steps[currentStep];
   const GENERATION_PASSWORD = process.env.NEXT_PUBLIC_GENERATION_PASSWORD;
   const ReactMediaRecorder = dynamic(
-  () => import('react-media-recorder').then(mod => mod.ReactMediaRecorder),
-  { ssr: false }
-);
+    () => import("react-media-recorder").then((mod) => mod.ReactMediaRecorder),
+    { ssr: false },
+  );
 
   const lessons = [
     {
@@ -86,7 +95,8 @@ const [currentStep, setCurrentStep] = useState(0);
   ];
 
   const API_KEY = process.env.NEXT_PUBLIC_LEONARDO_API_KEY;
-  const AUTHORIZATION = `Bearer ${API_KEY}`;  // Fixed template literal syntax
+  const AUTHORIZATION = `Bearer ${API_KEY}`; // Fixed template literal syntax
+
 
   const HEADERS = {
     accept: "application/json",
@@ -94,29 +104,69 @@ const [currentStep, setCurrentStep] = useState(0);
     authorization: AUTHORIZATION,
   };
 
-  const validateAndGenerate = () => {
-    if (generationPassword !== GENERATION_PASSWORD) {
-      setPasswordError("Incorrect password. Please try again.");
-      return;
-    }
-    setPasswordError("");
-    generateAvatar();
-  };
-
-  const analyzeRecordings = async (recordings: string[]) => {
-  console.log("Analyzing recordings:", recordings);
-  // Simulate async operation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve("fake-analysis-result");
-    }, 1000);
-  });
+const handleClearRecordings = () => {
+  setRecordings([]);
+  setAudioBlob(null);
+  setAudioUrl(null);
+  console.log('Cleared recordings and audio preview.');
 };
 
-const playAnalysisVideo = (result: any) => {
-  console.log("Playing analysis video with result:", result);
+const handleTranscribe = async () => {
+  // Collect blobs from the audio recording URLs (assuming you have the URLs)
+  const blobParts = await Promise.all(
+    recordings.map(async (url) => {
+      const response = await fetch(url);
+      return await response.blob();
+    })
+  );
+
+  // Create a Blob from the collected parts
+  const audioBlob = new Blob(blobParts, { type: 'audio/wav' });
+
+  // Log the type and size of the blob (ensure it's correct)
+  console.log('type', audioBlob.type); // should be audio/wav
+  console.log('size', audioBlob.size); // should be > 0
+
+  // Create FormData and append the audio file (Blob) to it
+  const formData = new FormData();
+  formData.append('audioFile', audioBlob, 'user_audio.wav'); // Correctly append the file
+
+  // Optionally, log FormData entries for debugging
+  for (let [key, value] of formData.entries()) {
+    console.log('FormData entry:', key, value);
+  }
+
+  try {
+    // Send the FormData via axios to your API endpoint
+    const response = await axios.post('/api/transcribe', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data', // Make sure this header is set
+      },
+    });
+
+    // Log the transcription result
+    console.log('Transcription result:', response.data);
+  } catch (err) {
+    // Handle error
+    console.error('Transcription error:', err);
+  }
 };
 
+
+
+  // const analyzeRecordings = async (recordings: string[]) => {
+  //   console.log("Analyzing recordings:", recordings);
+  //   // Simulate async operation
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve("fake-analysis-result");
+  //     }, 1000);
+  //   });
+  // };
+
+  // const playAnalysisVideo = (result: any) => {
+  //   console.log("Playing analysis video with result:", result);
+  // };
 
   async function generateAvatar() {
     console.log(
@@ -180,6 +230,54 @@ const playAnalysisVideo = (result: any) => {
     }
   }
 
+  const validateAndGenerate = () => {
+  if (generationPassword !== process.env.NEXT_PUBLIC_GENERATION_PASSWORD) {
+    setPasswordError("Incorrect password");
+    return;
+  }
+  generateAvatar();
+};
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm',  // Explicitly set to webm format
+      });
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });  // Changed to webm
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        setRecordings([...recordings, url]);
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+    }
+    setIsRecording(false);
+  };
+
   async function testFetchGeneratedImage() {
     const url = `https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`;
 
@@ -213,7 +311,7 @@ const playAnalysisVideo = (result: any) => {
         <button
           className={`px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105
           ${tab === "setup" ? "bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]" : "bg-white border-2 border-[#E5E5E5] shadow-[0_4px_0_#E5E5E5]"}`}
-          onClick={() => setTab("setup")}
+          onClick={() => {setTab("setup"); handleClearRecordings();}}
         >
           1. Avatar Setup
         </button>
@@ -430,7 +528,7 @@ const playAnalysisVideo = (result: any) => {
       {tab === "lessons" && selectedLesson && !hasStarted && (
         <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg border-2 border-[#E5E5E5]">
           <button
-            onClick={() => setSelectedLesson(null)}
+            onClick={() => {setSelectedLesson(null); handleClearRecordings();}}
             className="mb-6 text-[#58CC02] font-bold hover:underline"
           >
             ← Back to Lessons
@@ -483,117 +581,111 @@ const playAnalysisVideo = (result: any) => {
                     </li>
                   </ul>
                 </div>
-                    <button
-      onClick={() => setHasStarted(true)}
-      className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
-    >
-      <span>Start Practice with Your {gender === "male" ? "Oppa" : "Noona"}! 🎯</span>
-    </button>
-                 <div className="mt-4">
-                </div>
-
-
+                <button
+                  onClick={() => setHasStarted(true)}
+                  className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                >
+                  <span>
+                    Start Practice with Your{" "}
+                    {gender === "male" ? "Oppa" : "Noona"}! 🎯
+                  </span>
+                </button>
+                <div className="mt-4"></div>
               </div>
             ))}
         </div>
       )}
-        {tab === "lessons" && selectedLesson && hasStarted && (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg border-2 border-[#E5E5E5]">
-                <button
+      {tab === "lessons" && selectedLesson && hasStarted && (
+        <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg border-2 border-[#E5E5E5]">
+          <button
             onClick={() => {
               setHasStarted(false);
               setCurrentStep(0);
+              handleClearRecordings();
             }}
             className="mb-6 text-[#58CC02] font-bold hover:underline"
           >
             ← Back to Lesson 1
           </button>
-                    <div className="space-y-6">
-                      {step.type === "video" && (
-                        <>
-                          <video
-                            src={step.media}
-                            controls
-                            className="w-full rounded-xl mb-2"
-                          />
-                          <p className="text-center text-lg font-medium">{step.caption}</p>
-                          <button
-                            onClick={() => setCurrentStep(currentStep + 1)}
-                            className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
-                          >
-                            <span>Continue 👉</span>
-                          </button>
-                        </>
-                      )}
+          <div className="space-y-6">
+            {step.type === "video" && (
+              <>
+                <video
+                  src={step.media}
+                  controls
+                  className="w-full rounded-xl mb-2"
+                />
+                <p className="text-center text-lg font-medium">
+                  {step.caption}
+                </p>
+                <button
+                  onClick={() => setCurrentStep(currentStep + 1)}
+                  className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                >
+                  <span>Continue 👉</span>
+                </button>
+              </>
+            )}
 
-                      {step.type === "user-input" && (
-                        <>
-                   <img
+            {step.type === "user-input" && (
+              <>
+                <img
                   src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
                   alt="Generated Avatar"
                   className="rounded-xl border shadow-lg"
                 />
-                          <p className="mb-2 text-center">Your turn! Say:</p>
-                          <p className="text-center font-semibold text-lg italic">"{step.script}"</p>
-                          <ReactMediaRecorder
-                            audio
-                            render={({ startRecording, stopRecording, mediaBlobUrl }) => (
-                              <>
-                                <div className="flex gap-4 justify-center mt-4">
-                                  <button
-                                    onClick={startRecording}
-                                    className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
-                                  >
-                                    Start Recording
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      stopRecording();
-                                                           console.log('mediaBlobUrl, recordings', mediaBlobUrl, recordings);
-                                      if (mediaBlobUrl) {
-                                        setRecordings([...recordings, mediaBlobUrl]);
-                                        console.log('mediaBlobUrl, recordings', mediaBlobUrl, recordings);
-                                      }
-                                    }}
-                                    className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
-                                  >
-                                    Stop Recording
-                                  </button>
-                                </div>
-                                {mediaBlobUrl && (
-                                  <>
-                                    <audio src={mediaBlobUrl} controls className="mt-4 mb-4 w-full" />
-                                    <button
-                                      onClick={() => setCurrentStep(currentStep + 1)}
-                                      className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
-                                    >
-                                      <span>Next Step ✨</span>
-                                    </button>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          />
-                        </>
-                      )}
+                <p className="mb-2 text-center">Your turn! Say:</p>
+                <p className="text-center font-semibold text-lg italic">
+                  "{step.script}"
+                </p>
 
-                      {step.type === "analysis" && (
-                        <div className="text-center">
-                          <p className="text-lg mb-4">Ready to check your pronunciation?</p>
-                          <button
-                            className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
-                            onClick={async () => {
-                              const result = await analyzeRecordings(recordings);
-                              playAnalysisVideo(result);
-                            }}
-                          >
-                            <span>Check My Progress! 🎉</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    </div>
+                <div className="audio-recorder">
+                  <div className="controls flex gap-4 justify-center mt-4">
+                    <button
+                      onClick={
+                        isRecording ? handleStopRecording : handleStartRecording
+                      }
+                      className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
+                    >
+                      {isRecording ? "Stop Recording" : "Start Recording"}
+                    </button>
+                  </div>
+
+                  {audioUrl && (
+                    <>
+                      <div className="audio-preview mt-4">
+                        <audio src={audioUrl} controls className="w-full" />
+                      </div>
+                      <button
+                        onClick={() => setCurrentStep(currentStep + 1)}
+                        className="w-full mt-4 py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                      >
+                        <span>Next Step ✨</span>
+                      </button>
+                    </>
                   )}
+                </div>
+              </>
+            )}
+
+            {step.type === "analysis" && (
+              <div className="text-center">
+                <p className="text-lg mb-4">
+                  Ready to check your pronunciation?
+                </p>
+                <button
+                  className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                  onClick={async () => {
+                    await handleTranscribe();
+                  }}
+                >
+                  <span>Check My Progress! 🎉</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
