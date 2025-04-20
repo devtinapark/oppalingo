@@ -1,8 +1,10 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import axios from "axios";
 import { isAxiosError } from "axios";
+import dynamic from 'next/dynamic';
+
 
 export default function App() {
   const [tab, setTab] = useState("setup");
@@ -24,7 +26,49 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [generationPassword, setGenerationPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+const [hasStarted, setHasStarted] = useState(false);
+const [currentStep, setCurrentStep] = useState(0);
+  const [recordings, setRecordings] = useState<string[]>([]);
+
+  const steps = [
+  {
+    type: "video",
+    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4",
+    caption: "Hello!",
+  },
+  {
+    type: "user-input",
+    script: "Hello",
+  },
+  {
+    type: "video",
+    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/names-lhaSc3wWiRuccNBMlvr8Ob5LYmQQZq.mp4",
+    caption: "My name is Gong Yoo. What's your name?",
+  },
+  {
+    type: "user-input",
+    script: `My name is ${userName}`,
+  },
+  {
+    type: "video",
+    media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/nice-IzWkVPHdc5kYvLmxP0VFmOeHLtktvq.mp4",
+    caption: "Nice to meet you!",
+  },
+  {
+    type: "user-input",
+    script: "Nice to meet you",
+  },
+  {
+    type: "analysis",
+  },
+];
+
+  const step = steps[currentStep];
   const GENERATION_PASSWORD = process.env.NEXT_PUBLIC_GENERATION_PASSWORD;
+  const ReactMediaRecorder = dynamic(
+  () => import('react-media-recorder').then(mod => mod.ReactMediaRecorder),
+  { ssr: false }
+);
 
   const lessons = [
     {
@@ -425,46 +469,96 @@ export default function App() {
                   </ul>
                 </div>
 
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">
-                    Practice with{" "}
-                    {avatarName ||
-                      `Your ${gender === "male" ? "Oppa" : "Noona"} TA`}
-                  </h3>
-                  <div className="bg-gray-50 border rounded p-3">
-                    <div className="relative">
-                      {isPlaying ? (
-                        <video
-                          className="w-full rounded-xl"
-                          autoPlay
-                          controls
-                          onEnded={() => setIsPlaying(false)}
-                        >
-                          <source
-                            src="https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4"
-                            type="video/mp4"
-                          />
-                        </video>
-                      ) : (
+                 <div className="mt-4">
+  {!hasStarted ? (
+    <button
+      onClick={() => setHasStarted(true)}
+      className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+    >
+      <span>Start Practice! 🎯</span>
+    </button>
+  ) : (
+                    <div className="space-y-6">
+                      {step.type === "video" && (
                         <>
-                          <img
-                            src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
-                            alt="Generated Avatar"
-                            className="rounded-xl border shadow-lg w-full"
+                          <video
+                            src={step.media}
+                            controls
+                            className="w-full rounded-xl mb-2"
                           />
+                          <p className="text-center text-lg font-medium">{step.caption}</p>
                           <button
-                            onClick={() => setIsPlaying(true)}
-                            className="absolute inset-0 w-full h-full flex items-center justify-center group"
+                            onClick={() => setCurrentStep(currentStep + 1)}
+                            className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
                           >
-                            <div className="bg-[#58CC02] w-20 h-20 rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110">
-                              <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2"></div>
-                            </div>
+                            <span>Continue 👉</span>
                           </button>
                         </>
                       )}
+
+                      {step.type === "user-input" && (
+                        <>
+                          <p className="mb-2 text-center">Your turn! Say:</p>
+                          <p className="text-center font-semibold text-lg italic">"{step.script}"</p>
+                          <ReactMediaRecorder
+                            audio
+                            render={({ startRecording, stopRecording, mediaBlobUrl }) => (
+                              <>
+                                <div className="flex gap-4 justify-center mt-4">
+                                  <button
+                                    onClick={startRecording}
+                                    className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
+                                  >
+                                    Start Recording
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      stopRecording();
+                                      if (mediaBlobUrl) {
+                                        setRecordings([...recordings, mediaBlobUrl]);
+                                      }
+                                    }}
+                                    className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
+                                  >
+                                    Stop Recording
+                                  </button>
+                                </div>
+                                {mediaBlobUrl && (
+                                  <>
+                                    <audio src={mediaBlobUrl} controls className="mt-4 mb-4 w-full" />
+                                    <button
+                                      onClick={() => setCurrentStep(currentStep + 1)}
+                                      className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                                    >
+                                      <span>Next Step ✨</span>
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          />
+                        </>
+                      )}
+
+                      {step.type === "analysis" && (
+                        <div className="text-center">
+                          <p className="text-lg mb-4">Ready to check your pronunciation?</p>
+                          <button
+                            className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+                            onClick={async () => {
+                              const result = await analyzeRecordings(recordings);
+                              playAnalysisVideo(result);
+                            }}
+                          >
+                            <span>Check My Progress! 🎉</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
+
+
               </div>
             ))}
         </div>
