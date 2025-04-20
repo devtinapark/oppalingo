@@ -32,6 +32,7 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [feedbackAudioUrl, setFeedbackAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -145,7 +146,10 @@ const handleTranscribe = async () => {
     });
 
     // Log the transcription result
-    console.log('Transcription result:', response.data);
+    console.log('Transcription and audio result:', response.data);
+ if (response.data?.audioUrl) {
+    setFeedbackAudioUrl(response.data.audioUrl);
+  }
   } catch (err) {
     // Handle error
     console.error('Transcription error:', err);
@@ -680,7 +684,23 @@ const handleTranscribe = async () => {
                   }}
                 >
                   <span>Check My Progress! 🎉</span>
+
                 </button>
+                <div className="flex flex-col items-center">
+
+  {feedbackAudioUrl && (
+    <audio controls className="mt-4">
+      <source src={feedbackAudioUrl} type="audio/mp3" />
+      Your browser does not support the audio element.
+    </audio>
+  )}
+  <img
+    src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
+    alt="Generated Avatar"
+    className="rounded-xl border shadow-lg m-5"
+  />
+
+</div>
               </div>
             )}
           </div>
