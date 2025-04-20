@@ -86,7 +86,7 @@ const [currentStep, setCurrentStep] = useState(0);
   ];
 
   const API_KEY = process.env.NEXT_PUBLIC_LEONARDO_API_KEY;
-  const AUTHORIZATION = `Bearer ${API_KEY}`;
+  const AUTHORIZATION = `Bearer ${API_KEY}`;  // Fixed template literal syntax
 
   const HEADERS = {
     accept: "application/json",
@@ -102,6 +102,21 @@ const [currentStep, setCurrentStep] = useState(0);
     setPasswordError("");
     generateAvatar();
   };
+
+  const analyzeRecordings = async (recordings: string[]) => {
+  console.log("Analyzing recordings:", recordings);
+  // Simulate async operation
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve("fake-analysis-result");
+    }, 1000);
+  });
+};
+
+const playAnalysisVideo = (result: any) => {
+  console.log("Playing analysis video with result:", result);
+};
+
 
   async function generateAvatar() {
     console.log(
@@ -412,7 +427,7 @@ const [currentStep, setCurrentStep] = useState(0);
         </div>
       )}
 
-      {tab === "lessons" && selectedLesson && (
+      {tab === "lessons" && selectedLesson && !hasStarted && (
         <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg border-2 border-[#E5E5E5]">
           <button
             onClick={() => setSelectedLesson(null)}
@@ -468,16 +483,31 @@ const [currentStep, setCurrentStep] = useState(0);
                     </li>
                   </ul>
                 </div>
-
-                 <div className="mt-4">
-  {!hasStarted ? (
-    <button
+                    <button
       onClick={() => setHasStarted(true)}
       className="w-full py-4 px-8 bg-[#58CC02] text-white text-xl font-bold rounded-2xl shadow-[0_4px_0_#58A700] transition-all transform hover:scale-105 flex items-center justify-center gap-3"
     >
-      <span>Start Practice! 🎯</span>
+      <span>Start Practice with Your {gender === "male" ? "Oppa" : "Noona"}! 🎯</span>
     </button>
-  ) : (
+                 <div className="mt-4">
+                </div>
+
+
+              </div>
+            ))}
+        </div>
+      )}
+        {tab === "lessons" && selectedLesson && hasStarted && (
+    <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg border-2 border-[#E5E5E5]">
+                <button
+            onClick={() => {
+              setHasStarted(false);
+              setCurrentStep(0);
+            }}
+            className="mb-6 text-[#58CC02] font-bold hover:underline"
+          >
+            ← Back to Lesson 1
+          </button>
                     <div className="space-y-6">
                       {step.type === "video" && (
                         <>
@@ -498,6 +528,11 @@ const [currentStep, setCurrentStep] = useState(0);
 
                       {step.type === "user-input" && (
                         <>
+                   <img
+                  src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
+                  alt="Generated Avatar"
+                  className="rounded-xl border shadow-lg"
+                />
                           <p className="mb-2 text-center">Your turn! Say:</p>
                           <p className="text-center font-semibold text-lg italic">"{step.script}"</p>
                           <ReactMediaRecorder
@@ -514,8 +549,10 @@ const [currentStep, setCurrentStep] = useState(0);
                                   <button
                                     onClick={() => {
                                       stopRecording();
+                                                           console.log('mediaBlobUrl, recordings', mediaBlobUrl, recordings);
                                       if (mediaBlobUrl) {
                                         setRecordings([...recordings, mediaBlobUrl]);
+                                        console.log('mediaBlobUrl, recordings', mediaBlobUrl, recordings);
                                       }
                                     }}
                                     className="px-6 py-3 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
@@ -555,14 +592,8 @@ const [currentStep, setCurrentStep] = useState(0);
                         </div>
                       )}
                     </div>
+                    </div>
                   )}
-                </div>
-
-
-              </div>
-            ))}
-        </div>
-      )}
     </div>
   );
 }

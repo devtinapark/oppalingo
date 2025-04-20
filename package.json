@@ -12,8 +12,7 @@
     "axios": "^1.8.4",
     "next": "15.3.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-media-recorder": "^1.7.1"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
