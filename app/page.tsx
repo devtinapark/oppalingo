@@ -97,12 +97,15 @@ export default function App() {
 
       console.log("Generated Image Details:", response.data);
     } catch (error: unknown) {
-  if (isAxiosError(error)) {
-    console.error("Error generating image:", error.response?.data || error.message);
-  } else {
-    console.error("Unknown error:", error);
-  }
-}
+      if (isAxiosError(error)) {
+        console.error(
+          "Error generating image:",
+          error.response?.data || error.message,
+        );
+      } else {
+        console.error("Unknown error:", error);
+      }
+    }
   }
 
   async function testFetchGeneratedImage() {
@@ -121,12 +124,15 @@ export default function App() {
       setAvatarImageUrl(imageUrl);
       console.log("Fetched Image URL:", imageUrl);
     } catch (error: unknown) {
-  if (isAxiosError(error)) {
-    console.error("Error fetching image:", error.response?.data || error.message);
-  } else {
-    console.error("Unknown error:", error);
-  }
-}
+      if (isAxiosError(error)) {
+        console.error(
+          "Error fetching image:",
+          error.response?.data || error.message,
+        );
+      } else {
+        console.error("Unknown error:", error);
+      }
+    }
   }
 
   return (
@@ -345,10 +351,12 @@ export default function App() {
             .map((lesson) => (
               <div key={lesson.id}>
                 <h2 className="text-xl font-bold mb-2">{lesson.title}</h2>
-                <div className="mt-6 mb-4">
+                <div
+                  className="relative mt-6 mb-4 w-full"
+                  style={{ paddingTop: "56.25%" }}
+                >
                   <iframe
-                    width="560"
-                    height="315"
+                    className="absolute top-0 left-0 w-full h-full rounded-lg"
                     src={lesson.clipUrl}
                     title="Lesson Video"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
