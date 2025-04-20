@@ -34,29 +34,29 @@ const [currentStep, setCurrentStep] = useState(0);
   {
     type: "video",
     media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4",
-    caption: "Hello!",
+    caption: "안녕하세요 (annyeonghaseyo)",
   },
   {
     type: "user-input",
-    script: "Hello",
+    script: "안녕하세요 (annyeonghaseyo)",
   },
   {
     type: "video",
     media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/names-lhaSc3wWiRuccNBMlvr8Ob5LYmQQZq.mp4",
-    caption: "My name is Gong Yoo. What's your name?",
+    caption: "제 이름은 공유입니다. 이름이 뭐에요? (je ireumeun Gong-yu-imnida. ireumi mwo-eyo?)",
   },
   {
     type: "user-input",
-    script: `My name is ${userName}`,
+    script: `제 이름은 ${userName}입니다. (je ireumeun ${userName}-imnida)`,
   },
   {
     type: "video",
     media: "https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/nice-IzWkVPHdc5kYvLmxP0VFmOeHLtktvq.mp4",
-    caption: "Nice to meet you!",
+    caption: "반갑습니다 (bangapseumnida)",
   },
   {
     type: "user-input",
-    script: "Nice to meet you",
+    script: "반갑습니다 (bangapseumnida)",
   },
   {
     type: "analysis",
