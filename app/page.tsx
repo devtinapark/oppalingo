@@ -21,6 +21,10 @@ export default function App() {
   // const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null);
   const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null);
   const [generationId, setGenerationId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [generationPassword, setGenerationPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const GENERATION_PASSWORD = process.env.NEXT_PUBLIC_GENERATION_PASSWORD;
 
   const lessons = [
     {
@@ -44,6 +48,15 @@ export default function App() {
     accept: "application/json",
     "content-type": "application/json",
     authorization: AUTHORIZATION,
+  };
+
+  const validateAndGenerate = () => {
+    if (generationPassword !== GENERATION_PASSWORD) {
+      setPasswordError("Incorrect password. Please try again.");
+      return;
+    }
+    setPasswordError("");
+    generateAvatar();
   };
 
   async function generateAvatar() {
@@ -246,11 +259,29 @@ export default function App() {
                       className="w-full border-2 border-[#E5E5E5] rounded-xl p-3 mb-4 focus:border-[#58CC02] focus:outline-none"
                       onChange={(e) => setAvatarAdjectives(e.target.value)}
                     />
+                    <label className="block mb-2 font-bold text-[#4B4B4B]">
+                      Password:
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Enter password"
+                      className="w-full border-2 border-[#E5E5E5] rounded-xl p-3 mb-1 focus:border-[#58CC02] focus:outline-none"
+                      value={generationPassword}
+                      onChange={(e) => {
+                        setGenerationPassword(e.target.value);
+                        setPasswordError("");
+                      }}
+                    />
+                    {passwordError && (
+                      <p className="text-red-500 text-sm mb-4">
+                        {passwordError}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-4 mb-4">
                     <button
                       className="px-6 py-3 mt-4 rounded-xl text-lg font-bold transition-all transform hover:scale-105 bg-[#58CC02] text-white shadow-[0_4px_0_#58A700]"
-                      onClick={generateAvatar}
+                      onClick={validateAndGenerate}
                     >
                       Generate
                     </button>
@@ -401,12 +432,37 @@ export default function App() {
                       `Your ${gender === "male" ? "Oppa" : "Noona"} TA`}
                   </h3>
                   <div className="bg-gray-50 border rounded p-3">
-                    <p className="italic"></p>
-                    <img
-                      src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
-                      alt="Generated Avatar"
-                      className="rounded-xl border shadow-lg"
-                    />
+                    <div className="relative">
+                      {isPlaying ? (
+                        <video
+                          className="w-full rounded-xl"
+                          autoPlay
+                          controls
+                          onEnded={() => setIsPlaying(false)}
+                        >
+                          <source
+                            src="https://sqtnqbtdf2kpwctq.public.blob.vercel-storage.com/hello-D8D5L7FWrIRypqCGgivoGASaIapx3X.mp4"
+                            type="video/mp4"
+                          />
+                        </video>
+                      ) : (
+                        <>
+                          <img
+                            src="https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg"
+                            alt="Generated Avatar"
+                            className="rounded-xl border shadow-lg w-full"
+                          />
+                          <button
+                            onClick={() => setIsPlaying(true)}
+                            className="absolute inset-0 w-full h-full flex items-center justify-center group"
+                          >
+                            <div className="bg-[#58CC02] w-20 h-20 rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110">
+                              <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2"></div>
+                            </div>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
