@@ -1,7 +1,6 @@
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
 import { OpenAI } from 'openai';
 
 export const config = {
@@ -14,21 +13,15 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Use a more specific environment variable name
-const DID_API_KEY = process.env.DID_API_KEY;
-const DID_TALK_ENDPOINT = 'https://api.d-id.com/talks';
-
-// Add API key validation
-if (!DID_API_KEY) {
-  console.error('D-ID API key is not configured');
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const form = formidable({ multiples: false, keepExtensions: true });
+  const form = formidable({
+    multiples: false,
+    keepExtensions: true, // Keep file extensions
+  });
 
   const data = await new Promise((resolve, reject) => {
     form.parse(req, (err, fields, files) => {
@@ -44,8 +37,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No audio file found' });
   }
 
+  // Add debug logging
+  console.log('File details:', {
+    filepath: file.filepath,
+    originalFilename: file.originalFilename,
+    mimetype: file.mimetype,
+    size: file.size
+  });
+
   try {
-    // Step 1: Transcribe
     const transcription = await openai.audio.transcriptions.create({
       model: 'whisper-1',
       file: fs.createReadStream(file.filepath),
@@ -53,7 +53,6 @@ export default async function handler(req, res) {
       language: 'ko'
     });
 
-    // Step 2: Get feedback from GPT
     const feedback = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
@@ -64,101 +63,43 @@ export default async function handler(req, res) {
 
     const feedbackText = feedback.choices[0].message.content;
 
-    // Step 3: Generate TTS audio
     const speech = await openai.audio.speech.create({
       model: 'tts-1',
-      voice: 'onyx', // deep male voice
+      voice: 'onyx',
       input: feedbackText,
     });
 
     const buffer = Buffer.from(await speech.arrayBuffer());
 
-    // Save the MP3 to /public
+    // Ensure public directory exists
     const publicDir = path.join(process.cwd(), 'public');
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-
-    const mp3Path = path.join(publicDir, 'feedback.mp3');
-    await fs.promises.writeFile(mp3Path, buffer);
-
-    // Step 4: Upload MP3 to base64 for D-ID
-    const audioBase64 = buffer.toString('base64');
-
-    // Step 5: Generate video using D-ID
-    if (!DID_API_KEY) {
-      return res.status(200).json({
-        transcription: transcription.text,
-        feedback: feedbackText,
-        audioUrl: '/feedback.mp3',
-        videoUrl: null,
-      });
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
     }
 
-    try {
-      const didResponse = await axios.post(DID_TALK_ENDPOINT, {
-        source_url: "https://cdn.leonardo.ai/users/580e1d91-a559-4638-a922-6f5195bb0b8d/generations/e0a906fc-3c6f-456f-af7e-8cd573f11213/segments/1:4:1/Flux_Dev_ortrait_of_a_confident_Korean_male_Kdrama_character_o_0.jpg",
-        script: {
-          type: "audio",
-          audio: audioBase64,
-          provider: { type: "microsoft", voice_id: "ko-KR-InJoonNeural" }
-        },
-        config: {
-          fluent: true,
-          pad_audio: 0,
-        }
-      }, {
-        headers: {
-          'Authorization': `Bearer ${DID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000, // 30 second timeout
-      });
+    // Save the audio file
+    const speechFile = path.join(publicDir, 'feedback.mp3');
+    await fs.promises.writeFile(speechFile, buffer);
 
-      const talkId = didResponse.data.id;
-
-      // Step 6: Poll D-ID until video is ready
-      let videoUrl = null;
-      for (let i = 0; i < 20; i++) {
-        const statusRes = await axios.get(`${DID_TALK_ENDPOINT}/${talkId}`, {
-          headers: { 'Authorization': `Bearer ${DID_API_KEY}` }
-        });
-
-        if (statusRes.data.result_url) {
-          videoUrl = statusRes.data.result_url;
-          break;
-        }
-        await new Promise(r => setTimeout(r, 2000)); // wait 2s
-      }
-
-      // Cleanup uploaded temp file
-      if (file?.filepath && fs.existsSync(file.filepath)) {
-        fs.unlinkSync(file.filepath);
-      }
-
-      return res.status(200).json({
-        transcription: transcription.text,
-        feedback: feedbackText,
-        audioUrl: '/feedback.mp3',
-        videoUrl: videoUrl,
-      });
-    } catch (didError) {
-      console.error('D-ID API Error:', didError.response?.data || didError.message);
-      // Continue without video if D-ID fails
-      return res.status(200).json({
-        transcription: transcription.text,
-        feedback: feedbackText,
-        audioUrl: '/feedback.mp3',
-        videoUrl: null,
-        didError: didError.response?.data || didError.message
-      });
+    // Clean up uploaded audio file (only once)
+    if (file?.filepath && fs.existsSync(file.filepath)) {
+      fs.unlinkSync(file.filepath);
     }
+
+    return res.status(200).json({
+      transcription: transcription.text,
+      feedback: feedbackText,
+      audioUrl: '/feedback.mp3',
+    });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('OpenAI transcription error:', error);
+    // Clean up the temporary file even if there's an error
     if (file?.filepath && fs.existsSync(file.filepath)) {
       fs.unlinkSync(file.filepath);
     }
     return res.status(500).json({
-      error: 'Something went wrong',
+      error: 'Transcription failed',
       details: error.message
     });
   }
