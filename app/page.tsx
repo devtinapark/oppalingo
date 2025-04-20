@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
+import { isAxiosError } from "axios";
 
 export default function App() {
   const [tab, setTab] = useState("setup");
@@ -95,12 +96,13 @@ export default function App() {
       }
 
       console.log("Generated Image Details:", response.data);
-    } catch (error) {
-      console.error(
-        "Error:",
-        error.response ? error.response.data : error.message,
-      );
-    }
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+    console.error("Error generating image:", error.response?.data || error.message);
+  } else {
+    console.error("Unknown error:", error);
+  }
+}
   }
 
   async function testFetchGeneratedImage() {
@@ -118,12 +120,13 @@ export default function App() {
       const imageUrl = response.data.generations_by_pk.generated_images[0].url;
       setAvatarImageUrl(imageUrl);
       console.log("Fetched Image URL:", imageUrl);
-    } catch (error) {
-      console.error(
-        "Error fetching image:",
-        error.response ? error.response.data : error.message,
-      );
-    }
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+    console.error("Error fetching image:", error.response?.data || error.message);
+  } else {
+    console.error("Unknown error:", error);
+  }
+}
   }
 
   return (
